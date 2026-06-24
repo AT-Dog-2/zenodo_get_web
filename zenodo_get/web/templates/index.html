@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenodo Downloader</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">⬇</div>
+                <div>
+                    <h1 data-i18n="appTitle">Zenodo Downloader</h1>
+                    <p data-i18n="appSubtitle">从 Zenodo 研究数据仓库下载记录文件</p>
+                </div>
+            </div>
+            <button class="btn btn-secondary btn-sm lang-toggle" id="lang-toggle">EN</button>
+        </header>
+
+        <div class="main-card">
+            <div class="layout-grid">
+                <!-- 左侧：配置与文件选择 -->
+                <div class="panel-left">
+                    <div class="form-row">
+                        <div>
+                            <label for="doi-input" data-i18n="doiLabel">DOI 或记录 ID</label>
+                            <input type="text" id="doi-input" data-i18n="doiPlaceholder" placeholder="10.5281/zenodo.1234567 或 1234567" autocomplete="off">
+                        </div>
+                        <button class="btn btn-secondary" onclick="validateDOI()" id="validate-btn" data-i18n="validateBtn">验证</button>
+                    </div>
+
+                    <div id="validation-panel" class="validation-panel">
+                        <div id="validation-header" class="validation-header"></div>
+                        <div id="validation-meta" class="validation-meta"></div>
+                    </div>
+
+                    <div id="file-selection-section" class="file-selection-section" style="display:none">
+                        <div class="file-selection-header">
+                            <label data-i18n="selectFiles">选择文件</label>
+                            <div class="file-selection-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="selectAllFiles(true)" data-i18n="selectAll">全选</button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="selectAllFiles(false)" data-i18n="deselectAll">全不选</button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="invertFileSelection()" data-i18n="invertSelection">反选</button>
+                            </div>
+                        </div>
+                        <input type="text" id="file-filter" class="file-filter" data-i18n="filterPlaceholder" placeholder="筛选文件名..." oninput="renderFileSelection()">
+                        <div id="file-selection-summary" class="file-selection-summary"></div>
+                        <div id="file-selection-list" class="file-selection-list"></div>
+                    </div>
+
+                    <div class="panel-left-footer">
+                        <div class="form-row dir-row">
+                            <div>
+                                <label for="output-dir" data-i18n="downloadDir">下载目录</label>
+                                <input type="text" id="output-dir" data-i18n="dirPlaceholder" placeholder="选择保存路径" value=".">
+                            </div>
+                            <div class="dir-buttons">
+                                <button class="btn btn-secondary btn-sm" onclick="pickDirectory()" data-i18n="browseDir">选择...</button>
+                                <button class="btn btn-secondary btn-sm" onclick="openDirectory()" data-i18n="openDir">打开</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-download" onclick="startDownload()" id="download-btn" data-i18n="startDownload">开始下载</button>
+                    </div>
+                </div>
+
+                <!-- 右侧：进度与任务 -->
+                <div class="panel-right">
+                    <div class="panel-right-inner" id="progress-section">
+                        <div class="panel-right-header">
+                            <span class="panel-right-title" data-i18n="downloadStatus">下载状态</span>
+                            <div id="status-badge" class="status-badge idle" data-i18n="waiting">等待开始</div>
+                        </div>
+
+                        <div class="progress-controls" id="progress-controls" style="display:none">
+                            <button class="btn btn-secondary btn-sm" id="pause-resume-btn">暂停</button>
+                            <button class="btn btn-danger btn-sm" id="delete-btn" onclick="deleteTask()" style="display:none">删除</button>
+                        </div>
+
+                        <div class="progress-label">
+                            <span data-i18n="progress">进度</span>
+                            <span id="progress-percent">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="overall-progress" style="width:0%"></div>
+                        </div>
+
+                        <div class="progress-stats">
+                            <div class="stat-box">
+                                <div class="stat-value" id="stat-files">0/0</div>
+                                <div class="stat-label" data-i18n="files">文件</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="stat-size">0 B</div>
+                                <div class="stat-label" data-i18n="downloaded">已下载</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="stat-speed">-</div>
+                                <div class="stat-label" data-i18n="speed">速度</div>
+                            </div>
+                        </div>
+
+                        <div class="current-file-box">
+                            <span class="label" data-i18n="current">当前:</span>
+                            <span id="current-file-name">-</span>
+                        </div>
+
+                        <div class="log-panel">
+                            <div class="log-header">
+                                <span data-i18n="log">日志</span>
+                                <span id="log-count">0 条</span>
+                            </div>
+                            <div class="log-body" id="log-body">
+                                <div class="log-entry log-placeholder" data-i18n="logPlaceholder">验证 DOI 并选择文件后开始下载</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="task-history-section" class="task-history-compact" style="display:none">
+                        <div class="task-history-title" data-i18n="taskHistory">历史任务</div>
+                        <div id="task-history-list" class="task-history-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            基于 <a href="https://github.com/dvolgyes/zenodo_get" target="_blank" rel="noopener">zenodo_get</a>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

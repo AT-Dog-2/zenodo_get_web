@@ -1,0 +1,18 @@
+image:
+  - Visual Studio 2019
+
+matrix:
+  fast_finish: true
+
+platform:
+  - x64
+
+install:
+  - ps: irm https://astral.sh/uv/install.ps1 | iex
+  - set PATH=%USERPROFILE%\.local\bin;%PATH%
+  - uv sync
+
+build: off
+
+test_script:
+  - uv run pytest -n 8 --cov -v

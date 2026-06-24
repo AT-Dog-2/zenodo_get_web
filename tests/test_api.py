@@ -1,0 +1,119 @@
+"""Test the Python API for zenodo_get download functionality."""
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+# Assuming zenodo_get is installed or PYTHONPATH is set correctly
+# to find the zenodo_get package.
+try:
+    from zenodo_get import download
+except ImportError:
+    # Fallback for environments where zenodo_get might not be in the default path yet
+    # This might happen if tests are run before installation in some CI setups.
+    # Adjust path as necessary if your project structure is different.
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    try:
+        from zenodo_get import download
+    except ImportError:
+        # If it still fails, zget might be the direct module if __init__ is not fully set up
+        from zenodo_get.zget import download
+
+
+def test_api_download_specific_file() -> None:
+    """Verify API can download files matching specific glob patterns.
+
+    This test verifies that:
+    1. Files matching the glob pattern are downloaded
+    2. Files NOT matching the glob pattern are NOT downloaded (issue #39)
+
+    The Zenodo record 1215979 contains 6 files:
+    - fetch_data.py (should be downloaded with *.py glob)
+    - 5 JSON files (should NOT be downloaded with *.py glob)
+    """
+    print("Running API Test: Download specific file (*.py)")
+    output_dir = "test_api_r_output"
+
+    # Cleanup before test
+    shutil.rmtree(output_dir, ignore_errors=True)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    try:
+        download(
+            record_or_doi="10.5281/zenodo.1215979",
+            output_dir=output_dir,
+            file_glob="*.py",
+            start_fresh=True,  # Corresponds to -n
+            exceptions_on_failure=True,  # Ensure API raises exceptions
+        )
+
+        # Verify the matching file WAS downloaded
+        assert Path(output_dir, "fetch_data.py").exists(), (
+            "fetch_data.py was not downloaded"
+        )
+
+        # Verify that ONLY the matching file was downloaded (issue #39)
+        # The record contains 5 JSON files that should NOT be downloaded
+        downloaded_files = os.listdir(output_dir)
+        assert len(downloaded_files) == 1, (
+            f"Expected only 1 file (*.py), but got {len(downloaded_files)}: {downloaded_files}"
+        )
+        assert downloaded_files[0] == "fetch_data.py", (
+            f"Expected only fetch_data.py, but got: {downloaded_files}"
+        )
+
+        print(
+            f"API Test: Download specific file (*.py) PASSED. Files in {output_dir}: {downloaded_files}"
+        )
+    except Exception as e:
+        print(f"API Test: Download specific file (*.py) FAILED: {e}")
+        # Cleanup after test (even on failure)
+        shutil.rmtree(output_dir, ignore_errors=True)
+        raise  # Re-raise the exception to fail the test
+
+    # Cleanup after successful test
+    shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_api_error_handling() -> None:
+    """Ensure API properly raises exceptions for invalid input."""
+    print("Running API Test: Error handling for invalid DOI")
+    raised_expected_exception = False
+    try:
+        download(record_or_doi="invalid_doi_for_api_test", exceptions_on_failure=True)
+    except (
+        ValueError,
+        ConnectionError,
+    ) as ve:  # DOI resolution failure can raise ValueError or ConnectionError
+        print(f"API Test: Error handling - Caught expected exception: {ve}")
+        raised_expected_exception = True
+    except Exception as e:  # Catch any other exception to report it
+        print(
+            f"API Test: Error handling - Caught unexpected exception: {type(e).__name__} - {e}"
+        )
+        pass  # Not the expected exception
+
+    assert raised_expected_exception, (
+        "Expected ValueError or ConnectionError was not raised for invalid DOI."
+    )
+    print("API Test: Error handling for invalid DOI PASSED.")
+
+
+def main() -> None:
+    """Run all API tests and report results."""
+    try:
+        test_api_download_specific_file()
+        test_api_error_handling()
+        print("All Python API tests PASSED.")
+        sys.exit(0)
+    except AssertionError as e:
+        print(f"Python API test FAILED: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Python API test FAILED with unexpected error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
