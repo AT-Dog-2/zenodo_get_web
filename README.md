@@ -1,134 +1,102 @@
-# zenodo_get: a downloader for Zenodo records
+# Zenodo Downloader
 
-[![CI](https://github.com/dvolgyes/zenodo_get/actions/workflows/ci.yml/badge.svg)](https://github.com/dvolgyes/zenodo_get/actions/workflows/ci.yml)
-[![CircleCI](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
-[![Build status](https://img.shields.io/appveyor/build/dvolgyes/zenodo-get)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
-[![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
-[![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
-[![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://github.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812)
+一个用于从 [Zenodo](https://zenodo.org) 研究数据仓库下载文件的工具，支持命令行和 Web 界面两种使用方式。
 
-A Python tool for downloading files from Zenodo records. Requires **Python 3.10+**.
+[![CI](https://github.com/AT-Dog-2/zenodo_get_web/actions/workflows/ci.yml/badge.svg)](https://github.com/AT-Dog-2/zenodo_get_web/actions/workflows/ci.yml)
 
-## Installation
+## 功能特点
 
-The simplest way (no installation needed) is using [uvx](https://docs.astral.sh/uv/guides/tools/), a tool runner from [uv](https://docs.astral.sh/uv/getting-started/installation/):
+- 支持通过记录 ID 或 DOI 下载文件
+- 支持文件类型过滤（glob 模式）
+- 支持 MD5 校验
+- 支持断点续传
+- 提供 Web 图形界面（中文）
+- 提供 Python API
+
+## 安装
+
+### 方式一：直接运行（无需安装）
 
 ```bash
 uvx zenodo_get RECORD_ID_OR_DOI
 ```
 
-Alternatively, install with pipx or pip:
+### 方式二：使用 pip 安装
 
 ```bash
-pipx install zenodo-get
-# or
 pip install zenodo-get
 ```
 
-## Usage
+## 使用方法
+
+### 命令行界面
 
 ```bash
-uvx zenodo_get RECORD_ID_OR_DOI
-```
-
-### Common Options
-
-| Option | Description |
-|--------|-------------|
-| `-o DIR` | Output directory (created if needed) |
-| `-g PATTERN` | Filter files by glob pattern (e.g., `-g "*.pdf"`) |
-| `-m` | Generate `md5sums.txt` for verification |
-| `-w FILE` | Write URLs to file instead of downloading (`-w -` for stdout) |
-| `-e` | Continue on error (skip failed files) |
-| `-n` | Start fresh (don't resume previous download) |
-| `-v N` | Verbosity level 0-4 (default: 2) |
-
-### Retry Options
-
-| Option | Description |
-|--------|-------------|
-| `--max-http-retries N` | HTTP retries with exponential backoff (default: 5) |
-| `--backoff-factor N` | Backoff multiplier in seconds (default: 0.5) |
-| `-R N` | Application-level retries for checksum failures (default: 1) |
-| `-p N` | Pause between retries in seconds (default: 3) |
-| `-t N` | Connection timeout in seconds (default: 25) |
-
-### Examples
-
-```bash
-# Download all files from a record
+# 下载所有文件
 uvx zenodo_get 1234567
 
-# Download only PDFs to a specific directory
-uvx zenodo_get 1234567 -g "*.pdf" -o ./downloads
-
-# Generate URL list for external download manager
-uvx zenodo_get 1234567 -w urls.txt
-
-# Use DOI instead of record ID
+# 使用 DOI 下载
 uvx zenodo_get -d 10.5281/zenodo.1234567
 
+# 仅下载 PDF 文件到指定目录
+uvx zenodo_get 1234567 -g "*.pdf" -o ./downloads
+
+# 生成 MD5 校验文件
+uvx zenodo_get 1234567 -m
+
+# 将 URL 列表写入文件
+uvx zenodo_get 1234567 -w urls.txt
 ```
 
-### Exit Codes
+### Web 界面
 
-- `0`: All files downloaded successfully
-- Non-zero: Error occurred (checksum mismatch, download failure, timeout, etc.)
-
-## Python API
-
-You can use `zenodo_get` as a library in your Python projects.
-
-### Installation
+启动 Web 服务：
 
 ```bash
-# Add to your project
-uv add zenodo-get
-# or
-pip install zenodo-get
+python -m zenodo_get.web
 ```
 
-### Usage
+然后在浏览器中打开 http://127.0.0.1:5001
+
+Web 界面支持：
+- 输入 DOI 或记录 ID 验证
+- 查看文件列表和元数据
+- 选择要下载的文件
+- 实时显示下载进度
+- 中英文切换
+
+### 常用选项
+
+| 选项 | 说明 |
+|------|------|
+| `-o DIR` | 输出目录 |
+| `-g PATTERN` | 文件过滤模式（如 `*.pdf`） |
+| `-m` | 生成 md5sums.txt 校验文件 |
+| `-w FILE` | 将 URL 写入文件 |
+| `-e` | 遇到错误继续下载 |
+| `-n` | 重新开始下载（不续传） |
+| `-v N` | 详细程度（0-4） |
+
+## Python API
 
 ```python
 from zenodo_get import download
 
-# Download all files from a record
+# 下载所有文件
 download("10.5281/zenodo.1234567", output_dir="./data")
 
-# Download only specific files using glob pattern
+# 仅下载 CSV 文件
 download(
     record_or_doi="1234567",
     output_dir="./data",
     file_glob="*.csv",
 )
-
-# Multiple glob patterns
-download(
-    record_or_doi="1234567",
-    output_dir="./data",
-    file_glob=["*.csv", "*.json"],
-)
 ```
 
-### Parameters
+## 环境要求
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `record_or_doi` | `str` | - | Zenodo record ID or DOI |
-| `output_dir` | `str \| Path` | `"."` | Output directory |
-| `file_glob` | `str \| tuple` | `"*"` | Filter files by glob pattern(s) |
-| `md5` | `bool` | `False` | Generate `md5sums.txt` |
-| `continue_on_error` | `bool` | `False` | Continue on download errors |
-| `start_fresh` | `bool` | `False` | Don't resume previous download |
-| `timeout` | `float` | `15.0` | Connection timeout in seconds |
-| `exceptions_on_failure` | `bool` | `True` | Raise exceptions on errors |
+- Python 3.10+
 
-## Citation
+## 许可证
 
-If you use this tool in academic work:
-
-```bash
-uvx zenodo_get --cite
-```
+参见 [LICENSE.txt](LICENSE.txt)
